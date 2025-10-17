@@ -1,132 +1,85 @@
-import os
-import pandas as pd
+# app.py
 import streamlit as st
-import matplotlib.pyplot as plt
-import math
 import requests
+import pandas as pd
+import math
+import matplotlib.pyplot as plt
 
 # -------------------------------
-# Streamlit Page Setup
+# Page Setup
 # -------------------------------
-st.set_page_config(page_title="🔥 ZYVRO AI - Amazon Winning Product Finder", layout="wide")
+st.set_page_config(
+    page_title="🔥 ZYVRO AI - Amazon Winning Product Finder",
+    layout="wide"
+)
 
 # -------------------------------
-# Custom Premium CSS
+# Branding Header
 # -------------------------------
 st.markdown("""
-    <style>
-        body { background-color: #0E1117; color: white; }
-        [data-testid="stSidebar"] { background-color: #161A20; color: white; }
-        .hero {
-            text-align: center;
-            background: linear-gradient(135deg, #1E1E2F, #2C2C3C);
-            padding: 2rem 0;
-            border-radius: 15px;
-            box-shadow: 0 0 15px rgba(255,75,75,0.3);
-            margin-bottom: 2rem;
-        }
-        .hero h1 {
-            font-size: 45px;
-            background: linear-gradient(90deg, #FF4B4B, #FFB300, #FF4B4B);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 900;
-            letter-spacing: 1.2px;
-        }
-        .hero p {
-            color: #C7C7C7;
-            font-size: 18px;
-            margin-top: -10px;
-        }
-        .stTextInput>div>div>input {
-            text-align: center;
-            border-radius: 10px;
-            height: 45px;
-            font-size: 18px;
-        }
-        .stButton>button {
-            width: 100%;
-            background: linear-gradient(90deg, #FF4B4B, #E63946);
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 10px;
-            border: none;
-            transition: 0.3s ease-in-out;
-        }
-        .stButton>button:hover {
-            transform: scale(1.05);
-            background: linear-gradient(90deg, #E63946, #FF4B4B);
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# -------------------------------
-# Hero Section
-# -------------------------------
-st.markdown("""
-    <div class="hero">
-        <h1>🔥 ZYVRO AI - Amazon Winning Product Finder</h1>
-        <p>Find Amazon’s hidden goldmine products using AI-powered ranking 🚀</p>
+    <div style="text-align:center; font-size:32px; font-weight:bold; background:linear-gradient(90deg, #FF4B4B, #E63946, #F1C40F); 
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+    🔥 ZYVRO AI - Amazon Winning Product Finder
     </div>
 """, unsafe_allow_html=True)
+st.markdown("Find Amazon’s hidden goldmine products using AI-powered scoring 🚀")
+st.markdown("---")
 
 # -------------------------------
-# Sidebar Controls
+# Sidebar Settings
 # -------------------------------
 with st.sidebar:
     st.header("⚙️ Settings")
-    num_products = st.slider("Number of Products", 5, 30, 12)
-    compute_score = st.checkbox("Compute Winning Score", value=True)
+    keyword = st.text_input("Search keyword", value="wireless earbuds")
+    num_products = st.slider("Number of products to fetch", 5, 30, 12)
+    compute_score = st.checkbox("Compute Winning Score (rating * log(reviews) / price)", value=True)
+    run_button = st.button("Search Live")
 
 # -------------------------------
-# Centered Search Bar
+# Rainforest API Key from Secrets
 # -------------------------------
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    keyword = st.text_input("Enter a keyword to search Amazon:", value="wireless earbuds")
-    run_button = st.button("🔍 Search Live Products")
+if "RAINFOREST_API_KEY" not in st.secrets:
+    st.error("❌ Please add your RAINFOREST_API_KEY in Streamlit Secrets.")
+    st.stop()
+API_KEY = st.secrets["RAINFOREST_API_KEY"]
 
 # -------------------------------
-# Rainforest API Function
+# Fetch Live Amazon Data
 # -------------------------------
-def get_live_data(keyword, n=12):
-    api_key = "40C25ED0DBBB4859B69E101D4995CF6C"
-    url = "https://api.rainforestapi.com/request"
+def fetch_rainforest_search(api_key, term, domain="amazon.in"):
     params = {
         "api_key": api_key,
         "type": "search",
-        "amazon_domain": "amazon.in",
-        "search_term": keyword
+        "amazon_domain": domain,
+        "search_term": term
     }
+    r = requests.get("https://api.rainforestapi.com/request", params=params, timeout=30)
+    r.raise_for_status()
+    return r.json()
 
+# -------------------------------
+# Normalize Product Data
+# -------------------------------
+def normalize_product(p):
     try:
-        response = requests.get(url, params=params, timeout=20)
-        response.raise_for_status()
-        data = response.json()
-    except Exception as e:
-        st.error(f"⚠️ API request failed: {e}")
-        return pd.DataFrame()
+        price_data = p.get("price")
+        price = None
+        if isinstance(price_data, dict):
+            val = price_data.get("value")
+            price = float(val) if val else None
 
-    products = []
-    for item in data.get("search_results", [])[:n]:
-        title = item.get("title")
-        link = item.get("link")
-        price_info = item.get("price", {})
-        price = price_info.get("value", 0)
-        rating = item.get("rating", 0)
-        reviews = item.get("reviews", 0)
-        thumbnail = item.get("image", "")
-        if title and price:
-            products.append({
-                "title": title,
-                "price": price,
-                "rating": rating,
-                "reviews": reviews,
-                "link": link,
-                "thumbnail": thumbnail
-            })
-    return pd.DataFrame(products)
+        rating = float(p.get("rating") or 0)
+        reviews = int(p.get("reviews") or 0)
+        return {
+            "title": p.get("title"),
+            "price": price,
+            "rating": rating,
+            "reviews": reviews,
+            "link": p.get("link"),
+            "asin": p.get("asin")
+        }
+    except:
+        return None
 
 # -------------------------------
 # Compute Winning Score
@@ -141,14 +94,21 @@ def compute_winning_score(row):
         return 0.0
 
 # -------------------------------
-# Main App Logic
+# Run App
 # -------------------------------
 if run_button:
-    st.info("Fetching live Amazon data... please wait ⏳")
+    with st.spinner("Fetching live Amazon data..."):
+        try:
+            raw = fetch_rainforest_search(API_KEY, keyword)
+        except Exception as e:
+            st.error(f"API request failed: {e}")
+            st.stop()
 
-    df = get_live_data(keyword, num_products)
+    results = raw.get("search_results") or []
+    df = pd.DataFrame([normalize_product(p) for p in results if normalize_product(p)])
+
     if df.empty:
-        st.warning("No products found. Try a different keyword.")
+        st.warning("No products found for this keyword.")
         st.stop()
 
     if compute_score:
@@ -158,15 +118,17 @@ if run_button:
         df = df.sort_values("reviews", ascending=False)
 
     # -------------------------------
-    # Top 8 Products Graph (Realistic Visual)
+    # Top 8 Products Graph
     # -------------------------------
     st.subheader("📈 Top 8 Winning Products Visualization")
-
     top8 = df.head(8).reset_index(drop=True)
+
+    # Normalize factors for color intensity
     max_price = top8["price"].max() or 1
     max_reviews = top8["reviews"].max() or 1
     max_rating = top8["rating"].max() or 1
 
+    # Color weight = higher score, higher rating, more reviews, lower price
     color_intensity = (
         (top8["Winning Score"] / top8["Winning Score"].max()) * 0.5
         + (top8["rating"] / max_rating) * 0.3
@@ -205,22 +167,20 @@ if run_button:
     st.pyplot(fig)
 
     # -------------------------------
-    # Product Table
+    # Products Table
     # -------------------------------
     st.subheader("🔍 Products Table")
     display_df = df[["title", "price", "rating", "reviews", "Winning Score", "link"]].copy()
-    st.dataframe(display_df, height=350)
+    st.dataframe(display_df, height=300)
 
     # -------------------------------
-    # Product Cards
+    # Top 8 Product Details
     # -------------------------------
     st.subheader("🏆 Top 8 Product Details")
     for idx, row in top8.iterrows():
         st.markdown(f"### {row['title'][:70]}")
-        if row["thumbnail"]:
-            st.image(row["thumbnail"], width=220)
         st.markdown(f"- 💰 Price: ₹{row['price']}")
         st.markdown(f"- ⭐ Rating: {row['rating']} | 🗣️ Reviews: {row['reviews']}")
-        st.markdown(f"- 🏁 Winning Score: {round(row['Winning Score'], 4)}")
+        st.markdown(f"- 🏁 Winning Score: {round(row['Winning Score'],4)}")
         st.markdown(f"- 🔗 [View on Amazon]({row['link']})")
         st.markdown("---")
