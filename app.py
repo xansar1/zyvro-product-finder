@@ -1,125 +1,112 @@
 import streamlit as st
-import requests
 import pandas as pd
-import numpy as np
+import requests
 import matplotlib.pyplot as plt
+from io import BytesIO
+import os
+from dotenv import load_dotenv
 
-# -------------------------------
-# Streamlit Page Setup
-# -------------------------------
-st.set_page_config(page_title="Zyvro Product Finder", page_icon="🛍️", layout="wide")
-st.title("🛍️ ZYVRO Product Finder")
-st.markdown("### Find the best Amazon products using live data & smart ranking!")
+# Load .env
+load_dotenv()
+API_KEY = os.getenv("RAINFOREST_API_KEY")
 
-# -------------------------------
-# API Key Setup
-# -------------------------------
-api_key = st.secrets.get("RAINFOREST_API_KEY")
-if not api_key:
-    st.error("❌ Please add your `RAINFOREST_API_KEY` in Streamlit Secrets.")
-    st.stop()
+# App title
+st.set_page_config(page_title="Zyvro AI - Amazon Winning Product Finder", layout="wide")
+st.title("🔥 ZYVRO AI - Amazon Winning Product Finder")
+st.write("Find Amazon's hidden goldmine products using AI-powered scoring 🚀")
 
-# -------------------------------
-# Search Input
-# -------------------------------
-keyword = st.text_input("🔍 Enter a product keyword (example: wireless earbuds, laptop, smart watch)", "")
+# Search bar
+keyword = st.text_input("🔍 Enter a product keyword", "wireless earbuds")
 
-if st.button("Search Product Data"):
-    if not keyword.strip():
-        st.warning("⚠️ Please enter a product name to search.")
-        st.stop()
+# If user searches
+if keyword:
+    st.subheader("📦 Fetching Live Amazon Data...")
 
-    with st.spinner("Fetching live data from Amazon... 🔄"):
-        url = "https://api.rainforestapi.com/request"
-        params = {
-            "api_key": api_key,
-            "type": "search",
-            "amazon_domain": "amazon.in",
-            "search_term": keyword
-        }
+    # Fetch from Rainforest API
+    url = "https://api.rainforestapi.com/request"
+    params = {
+        "api_key": API_KEY,
+        "type": "search",
+        "amazon_domain": "amazon.in",
+        "search_term": keyword,
+        "page": "1"
+    }
 
-        response = requests.get(url, params=params)
-        if response.status_code != 200:
-            st.error("❌ API request failed. Check your API key or network.")
-            st.stop()
+    response = requests.get(url, params=params)
+    data = response.json()
 
-        data = response.json()
-        # st.json(data)  # Uncomment this line if you want to debug JSON response
+    if "search_results" in data:
+        products = data["search_results"]
 
-        products = data.get("search_results", [])
-        if not products:
-            st.warning("No products found. Try a different keyword.")
-            st.stop()
-
-        # -------------------------------
-        # Convert JSON to DataFrame
-        # -------------------------------
+        # Build dataframe
         df = pd.DataFrame([
             {
-                "title": p.get("title"),
-                "price": p.get("price", {}).get("value"),
-                "rating": p.get("rating"),
-                "reviews": p.get("reviews_total"),
-                "image": p.get("image"),
-                "link": p.get("link")
+                "title": p.get("title", ""),
+                "price": p.get("price", {}).get("value", None),
+                "currency": p.get("price", {}).get("currency", "INR"),
+                "rating": p.get("rating", 0),
+                "reviews": p.get("reviews_total", 0),
+                "link": p.get("link", ""),
+                "image": p.get("image", "")
             }
             for p in products
         ])
 
-        # Clean Data
+        # 🔧 Data Cleaning
+        df["price"] = (
+            df["price"]
+            .astype(str)
+            .str.replace("₹", "", regex=False)
+            .str.replace(",", "", regex=False)
+        )
         df["price"] = pd.to_numeric(df["price"], errors="coerce").fillna(0)
         df["rating"] = pd.to_numeric(df["rating"], errors="coerce").fillna(0)
         df["reviews"] = pd.to_numeric(df["reviews"], errors="coerce").fillna(0)
 
-        # Compute "Winning Score"
-        df["Winning Score"] = (df["rating"] * np.log1p(df["reviews"])) / (df["price"] + 1)
-        df["Winning Score"] = df["Winning Score"].fillna(0)
+        # 💡 Compute Winning Score
+        df["Winning Score"] = (
+            (df["rating"] * 0.6) + (df["reviews"].apply(lambda x: min(x / 1000, 1)) * 0.4)
+        )
 
-        # -------------------------------
-        # Top 8 Products Graph
-        # -------------------------------
+        # Sort top 8
+        top8 = df.sort_values("Winning Score", ascending=False).head(8).reset_index(drop=True)
+
+        # 🎯 Display Visualization
         st.subheader("📈 Top 8 Winning Products Visualization")
 
-        top8 = df.sort_values("Winning Score", ascending=False).head(8)
+        valid_df = top8[(top8["price"] > 0) & (top8["rating"] > 0)]
+        if not valid_df.empty:
+            plt.figure(figsize=(10, 5))
+            plt.barh(valid_df["title"], valid_df["Winning Score"], color="skyblue")
+            plt.xlabel("Winning Score")
+            plt.ylabel("Product")
+            plt.title(f"Realistic Product Insights for '{keyword}'", fontweight="bold", color="purple")
+            plt.tight_layout()
 
-        if top8["Winning Score"].sum() == 0:
-            st.warning("⚠️ No valid numeric data to plot. Try another keyword.")
+            buf = BytesIO()
+            plt.savefig(buf, format="png")
+            st.image(buf)
         else:
-            max_score = top8["Winning Score"].max()
-            color_intensity = (top8["Winning Score"] / max_score)
+            st.warning("⚠️ No valid numeric data to plot. Try another keyword.")
 
-            fig, ax = plt.subplots(figsize=(10, 5))
-            bars = ax.barh(top8["title"].str[:45], top8["Winning Score"],
-                           color=plt.cm.plasma(color_intensity))
-            for bar, score, price in zip(bars, top8["Winning Score"], top8["price"]):
-                ax.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height()/2,
-                        f"{score:.2f} (₹{price:.0f})", va="center", fontsize=10)
-            ax.invert_yaxis()
-            ax.set_xlabel("Winning Score")
-            st.pyplot(fig)
+        # 📊 Show Product Table
+        st.subheader("🔎 Products Table")
+        st.dataframe(top8[["title", "price", "rating", "reviews", "Winning Score", "link"]])
 
-        # -------------------------------
-        # Product Details with Images
-        # -------------------------------
+        # 🏆 Show Individual Product Details
         st.subheader("🏆 Top 8 Product Details")
-
         for idx, row in top8.iterrows():
             st.markdown(f"### {row['title']}")
-            if pd.notna(row.get("image")) and str(row["image"]).startswith("http"):
-                st.image(row["image"], width=200)
+            if row["image"]:
+                st.image(row["image"], width=250)
             else:
-                st.write("🖼️ *No image available*")
+                st.info("Image not available")
+            st.markdown(f"""
+            - 💰 **Price:** ₹{row['price']}
+            - ⭐ **Rating:** {row['rating']} | 💬 **Reviews:** {row['reviews']}
+            - 🏁 **Winning Score:** {round(row['Winning Score'], 2)}
+            - 🔗 [**View on Amazon**]({row['link']})
+            """)
 
-            st.write(f"💰 **Price:** ₹{row['price']}")
-            st.write(f"⭐ **Rating:** {row['rating']} | 💬 Reviews: {row['reviews']}")
-            st.write(f"🏁 **Winning Score:** {round(row['Winning Score'], 4)}")
-            st.markdown(f"[🔗 View on Amazon]({row['link']})")
-            st.markdown("---")
-
-        # -------------------------------
-        # Data Table
-        # -------------------------------
-        st.subheader("📊 Full Product Data Table")
-        st.dataframe(df)
-
-        st.success("✅ Data fetched successfully from live API!")
+    else:
+        st.error("❌ Could not fetch product data. Check your API key or keyword.")
