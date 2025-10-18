@@ -8,38 +8,38 @@ import math
 from dotenv import load_dotenv
 
 # -------------------------------
-# Streamlit page
+# Load environment & API key
+# -------------------------------
+load_dotenv()
+API_KEY = os.getenv("RAINFOREST_API_KEY")
+
+if not API_KEY:
+    st.error("❌ Please add your RAINFOREST_API_KEY in .env or Streamlit Secrets!")
+    st.stop()
+
+# -------------------------------
+# Streamlit page config
 # -------------------------------
 st.set_page_config(
     page_title="🔥 ZYVRO AI - Winning Product Finder",
     layout="wide"
 )
+
 st.title("🔥 ZYVRO AI - Amazon Winning Product Finder")
-st.markdown("Find Amazon’s hidden high-potential products using live data.")
+st.markdown("Find live Amazon products with Winning Score, images, and top insights!")
 
 # -------------------------------
 # Sidebar
 # -------------------------------
 with st.sidebar:
     st.header("⚙️ Settings")
-    keyword = st.text_input("Search keyword", value="wireless earbuds")
+    keyword = st.text_input("Search Keyword", value="wireless earbuds")
     num_products = st.slider("Number of products to fetch", 5, 30, 12)
-    compute_score = st.checkbox("Compute Winning Score (rating * log(reviews) / price)", value=True)
-    run_button = st.button("Run Live Search")
+    compute_score = st.checkbox("Compute Winning Score", value=True)
+    run_button = st.button("Search Live")
 
 # -------------------------------
-# Load API Key
-# -------------------------------
-load_dotenv()
-API_KEY = os.getenv("RAINFOREST_API_KEY")
-PLACEHOLDER_IMAGE = "https://via.placeholder.com/200?text=No+Image"
-
-if not API_KEY:
-    st.error("❌ Please add your RAINFOREST_API_KEY in Streamlit Secrets or .env file.")
-    st.stop()
-
-# -------------------------------
-# Fetch Data Function
+# Fetch live data
 # -------------------------------
 def fetch_rainforest_search(api_key, term, domain="amazon.in"):
     params = {
@@ -53,7 +53,7 @@ def fetch_rainforest_search(api_key, term, domain="amazon.in"):
     return r.json()
 
 # -------------------------------
-# Normalize Product Data
+# Normalize product data
 # -------------------------------
 def normalize_product(p):
     try:
@@ -61,23 +61,20 @@ def normalize_product(p):
         price = None
         if isinstance(price_data, dict):
             val = price_data.get("value")
-            if val and val > 100000:
-                price = round(val / 100.0, 2)
-            else:
-                price = float(val) if val else None
+            if val:
+                # adjust large values
+                price = round(val/100, 2) if val > 100000 else float(val)
         rating = float(p.get("rating") or 0)
         reviews = int(p.get("reviews") or 0)
-        thumbnail = p.get("thumbnail") or None
         return {
             "title": p.get("title"),
             "price": price,
             "rating": rating,
             "reviews": reviews,
             "link": p.get("link"),
-            "thumbnail": thumbnail,
-            "asin": p.get("asin")
+            "thumbnail": p.get("thumbnail"),
         }
-    except Exception:
+    except:
         return None
 
 # -------------------------------
@@ -93,7 +90,7 @@ def compute_winning_score(row):
         return 0.0
 
 # -------------------------------
-# Run App
+# Run search
 # -------------------------------
 if run_button:
     with st.spinner("Fetching live data from Rainforest API..."):
@@ -105,7 +102,7 @@ if run_button:
 
     results = raw.get("search_results") or []
     df = pd.DataFrame([normalize_product(p) for p in results if normalize_product(p)])
-
+    
     if df.empty:
         st.warning("No products found for this keyword.")
         st.stop()
@@ -117,68 +114,50 @@ if run_button:
         df = df.sort_values("reviews", ascending=False)
 
     # -------------------------------
-    # Top 8 Products Graph (Realistic Visual)
+    # Top 8 Products Graph (Realistic)
     # -------------------------------
     st.subheader("📈 Top 8 Winning Products Visualization")
     top8 = df.head(8).reset_index(drop=True)
-
-    # Normalize factors for color intensity
+    
     max_price = top8["price"].max() or 1
     max_reviews = top8["reviews"].max() or 1
     max_rating = top8["rating"].max() or 1
-
-    # Color weight = higher score, higher rating, more reviews
+    
     color_intensity = (
         (top8["Winning Score"] / top8["Winning Score"].max()) * 0.5
         + (top8["rating"] / max_rating) * 0.3
         + (top8["reviews"] / max_reviews) * 0.2
     )
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    bars = ax.barh(
-        top8["title"].str[:45],
-        top8["Winning Score"],
-        color=plt.cm.plasma(color_intensity)
-    )
-
+    
+    fig, ax = plt.subplots(figsize=(10,5))
+    bars = ax.barh(top8["title"].str[:45], top8["Winning Score"], color=plt.cm.plasma(color_intensity))
     for bar, score, price in zip(bars, top8["Winning Score"], top8["price"]):
         width = bar.get_width()
-        ax.text(
-            width + (max(top8["Winning Score"]) * 0.02),
-            bar.get_y() + bar.get_height() / 2,
-            f"{score:.2f} (₹{price:.0f})",
-            va="center",
-            fontsize=10,
-            color="black",
-            fontweight="bold"
-        )
-
+        ax.text(width + (max(top8["Winning Score"]) * 0.02),
+                bar.get_y() + bar.get_height()/2,
+                f"{score:.2f} (₹{price:.0f})",
+                va="center", fontsize=10, color="black", fontweight="bold")
     ax.invert_yaxis()
-    ax.set_xlabel("Winning Score", fontsize=12)
-    ax.set_ylabel("Product", fontsize=12)
-    ax.set_title(
-        f"Realistic Product Insights for '{keyword}'",
-        fontsize=14,
-        fontweight="bold",
-        color="#4F46E5"
-    )
+    ax.set_xlabel("Winning Score")
+    ax.set_ylabel("Product")
+    ax.set_title(f"Realistic Product Insights for '{keyword}'", fontsize=14, fontweight="bold", color="#4F46E5")
     ax.grid(axis="x", linestyle="--", alpha=0.4)
     st.pyplot(fig)
 
     # -------------------------------
     # Products Table
     # -------------------------------
-    st.subheader("🔍 Products Table")
-    display_df = df[["title","price","rating","reviews","Winning Score","link"]].copy()
-    st.dataframe(display_df, height=300)
+    st.subheader("🔍 All Fetched Products")
+    st.dataframe(df[["title","price","rating","reviews","Winning Score","link"]], height=300)
 
     # -------------------------------
-    # Top 8 Product Details
+    # Top 8 Product Cards
     # -------------------------------
     st.subheader("🏆 Top 8 Product Details")
     for idx, row in top8.iterrows():
         st.markdown(f"### {row['title'][:70]}")
-        st.image(row.get("thumbnail") or PLACEHOLDER_IMAGE, width=200)
+        if row["thumbnail"]:
+            st.image(row["thumbnail"], width=200)
         st.markdown(f"- 💰 Price: ₹{row['price']}")
         st.markdown(f"- ⭐ Rating: {row['rating']} | 🗣️ Reviews: {row['reviews']}")
         st.markdown(f"- 🏁 Winning Score: {round(row['Winning Score'],4)}")
