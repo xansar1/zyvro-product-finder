@@ -1,51 +1,100 @@
 import requests
 import pandas as pd
+import os
+from dotenv import load_dotenv
 
-# 🔑 Replace this with your Rainforest API key
-API_KEY = "40C25ED0DBBB4859B69E101D4995CF6C"
+# ---------------- LOAD ENV ----------------
+load_dotenv()
+API_KEY = os.getenv("RAINFOREST_API_KEY")
 
-def get_amazon_top_products(keyword, max_results=10):
+
+def competition_level(reviews):
+    if reviews < 200:
+        return "Low"
+    elif reviews < 1000:
+        return "Medium"
+    return "High"
+
+
+def get_amazon_top_products(keyword, marketplace="amazon.in", max_results=10):
     params = {
-        'api_key': API_KEY,
-        'type': 'search',
-        'amazon_domain': 'amazon.in',
-        'search_term': keyword,
-        'page': 1
+        "api_key": API_KEY,
+        "type": "search",
+        "amazon_domain": marketplace,
+        "search_term": keyword,
+        "page": 1
     }
 
-    response = requests.get('https://api.rainforestapi.com/request', params=params)
+    response = requests.get(
+        "https://api.rainforestapi.com/request",
+        params=params
+    )
+
     data = response.json()
 
-    if 'search_results' not in data:
-        print("⚠️ No search results found. Check your API key or query.")
-        return []
+    if "search_results" not in data:
+        print("⚠️ No search results found. Check API key or keyword.")
+        return pd.DataFrame()
 
-    results = []
-    for product in data['search_results'][:max_results]:
-        title = product.get('title', 'N/A')
-        price = product.get('price', {}).get('value', 'N/A')
-        currency = product.get('price', {}).get('currency', '')
-        rating = product.get('rating', 'N/A')
-        reviews = product.get('reviews_total', 'N/A')
-        link = product.get('link', '')
+    rows = []
 
-        results.append({
+    for product in data["search_results"][:max_results]:
+        title = product.get("title", "N/A")
+        price = product.get("price", {}).get("value", 0)
+        currency = product.get("price", {}).get("currency", "INR")
+        rating = product.get("rating", 0)
+        reviews = product.get("reviews_total", 0)
+        link = product.get("link", "")
+
+        rows.append({
             "Product Title": title,
-            "Price": f"{currency} {price}",
+            "Price": price,
+            "Currency": currency,
             "Rating": rating,
             "Reviews": reviews,
+            "Competition": competition_level(reviews),
             "Link": link
         })
 
-    return results
+    df = pd.DataFrame(rows)
 
-# 🛍 Example use
+    # ---------------- SMART SCORE ----------------
+    max_price = max(df["Price"].max(), 1)
+
+    df["Winning Score"] = (
+        (df["Rating"] * 0.25) +
+        (df["Reviews"].apply(lambda x: min(x / 5000, 1)) * 0.25) +
+        ((1 - (df["Price"] / max_price)) * 0.20) +
+        (df["Product Title"].str.len().apply(lambda x: 1 if x < 80 else 0.5) * 0.15) +
+        (df["Reviews"].apply(lambda x: 1 if x < 500 else 0.4) * 0.15)
+    ) * 100
+
+    # ---------------- BUSINESS METRICS ----------------
+    df["Estimated Margin"] = (df["Price"] * 0.35).round(2)
+    df["Suggested Sourcing Cost"] = (df["Price"] * 0.45).round(2)
+
+    return df.sort_values("Winning Score", ascending=False)
+
+
+# ---------------- CLI MODE ----------------
 if __name__ == "__main__":
-    keyword = input("Enter product keyword (e.g., 'wireless earbuds'): ")
-    products = get_amazon_top_products(keyword, max_results=10)
+    keyword = input("Enter product keyword: ")
 
-    if products:
-        df = pd.DataFrame(products)
-        print(df)
+    df = get_amazon_top_products(
+        keyword=keyword,
+        marketplace="amazon.in",
+        max_results=10
+    )
+
+    if not df.empty:
+        print(df[[
+            "Product Title",
+            "Price",
+            "Rating",
+            "Reviews",
+            "Competition",
+            "Winning Score"
+        ]])
+
         df.to_csv("winning_products.csv", index=False)
         print("\n✅ Saved to winning_products.csv")
