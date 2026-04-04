@@ -35,26 +35,34 @@ def competition_level(reviews):
         return "Medium"
     return "High"
 
+
+def trend_label(score):
+    if score > 70:
+        return "🚀 Rising"
+    elif score > 40:
+        return "📈 Stable"
+    return "📉 Declining"
+
+
 # ---------------- MAIN APP ----------------
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
-    # ---------------- CLEAN DATA ----------------
     required_cols = ["title", "price", "rating", "reviews", "category"]
-
     missing_cols = [col for col in required_cols if col not in df.columns]
 
     if missing_cols:
         st.error(f"❌ Missing columns: {', '.join(missing_cols)}")
         st.stop()
 
+    # ---------------- CLEAN DATA ----------------
     df["price"] = pd.to_numeric(df["price"], errors="coerce").fillna(0)
     df["rating"] = pd.to_numeric(df["rating"], errors="coerce").fillna(0)
     df["reviews"] = pd.to_numeric(df["reviews"], errors="coerce").fillna(0)
 
     max_price = max(df["price"].max(), 1)
 
-    # ---------------- SMART WINNING SCORE ----------------
+    # ---------------- WINNING SCORE ----------------
     df["Winning Score"] = (
         (df["rating"] * 0.30) +
         (df["reviews"].apply(lambda x: min(x / 5000, 1)) * 0.25) +
@@ -68,6 +76,13 @@ if uploaded_file:
     df["Estimated Margin"] = (df["price"] * 0.35).round(2)
     df["Suggested Sourcing Cost"] = (df["price"] * 0.45).round(2)
 
+    # ---------------- TREND MOMENTUM ----------------
+    df["Trend Score"] = (
+        (df["rating"] * 10) +
+        (df["reviews"].apply(lambda x: min(x / 100, 50)))
+    )
+    df["Trend Status"] = df["Trend Score"].apply(trend_label)
+
     # ---------------- TOP PRODUCTS ----------------
     top8 = (
         df.sort_values("Winning Score", ascending=False)
@@ -75,17 +90,15 @@ if uploaded_file:
         .reset_index(drop=True)
     )
 
-    # ---------------- BEST OPPORTUNITY ----------------
     best = top8.iloc[0]
 
     st.success(
         f"🚀 Best Opportunity: {best['title']} | "
-        f"Category: {best['category']} | "
-        f"Competition: {best['Competition']} | "
+        f"{best['Trend Status']} | "
         f"Winning Score: {round(best['Winning Score'], 2)}"
     )
 
-    # ---------------- VISUALIZATION ----------------
+    # ---------------- CHART ----------------
     st.subheader("📈 Top 8 Winning Products")
 
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -100,7 +113,7 @@ if uploaded_file:
     st.image(buf)
 
     # ---------------- TABLE ----------------
-    st.subheader("📊 Winning Product Intelligence Table")
+    st.subheader("📊 Product Intelligence Table")
     st.dataframe(
         top8[[
             "title",
@@ -109,28 +122,62 @@ if uploaded_file:
             "rating",
             "reviews",
             "Competition",
+            "Trend Status",
             "Estimated Margin",
-            "Suggested Sourcing Cost",
             "Winning Score"
         ]]
     )
 
-    # ---------------- PRODUCT BREAKDOWN ----------------
-    st.subheader("🏆 Top 8 Product Breakdown")
+    # ---------------- ROI CALCULATOR ----------------
+    st.subheader("💵 Profit & ROI Simulator")
 
-    for _, row in top8.iterrows():
-        st.markdown(f"### {row['title']}")
-        st.markdown(f"""
-- 📦 **Category:** {row['category']}
-- 💰 **Price:** ₹{row['price']}
-- ⭐ **Rating:** {row['rating']}
-- 💬 **Reviews:** {row['reviews']}
-- ⚔️ **Competition:** {row['Competition']}
-- 📈 **Winning Score:** {round(row['Winning Score'], 2)}
-- 💵 **Estimated Margin:** ₹{row['Estimated Margin']}
-- 🏭 **Suggested Sourcing Cost:** ₹{row['Suggested Sourcing Cost']}
-""")
-        st.divider()
+    selected_product = st.selectbox(
+        "Select Product for ROI Analysis",
+        top8["title"]
+    )
+
+    selected_row = top8[top8["title"] == selected_product].iloc[0]
+
+    selling_price = st.number_input(
+        "Selling Price",
+        value=float(selected_row["price"]),
+        min_value=1.0
+    )
+
+    sourcing_cost = st.number_input(
+        "Sourcing Cost",
+        value=float(selected_row["Suggested Sourcing Cost"]),
+        min_value=0.0
+    )
+
+    amazon_fee_percent = st.slider("Amazon Fee %", 1, 40, 15)
+    ads_cost = st.number_input("Ads Cost per Sale", value=50.0)
+    shipping_cost = st.number_input("Shipping Cost", value=40.0)
+
+    amazon_fee = selling_price * (amazon_fee_percent / 100)
+
+    net_profit = (
+        selling_price
+        - sourcing_cost
+        - amazon_fee
+        - ads_cost
+        - shipping_cost
+    )
+
+    profit_margin = (net_profit / selling_price) * 100
+    roi = (net_profit / sourcing_cost) * 100 if sourcing_cost > 0 else 0
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("💰 Net Profit", f"₹{round(net_profit,2)}")
+    c2.metric("📈 Margin %", f"{round(profit_margin,2)}%")
+    c3.metric("🚀 ROI %", f"{round(roi,2)}%")
+
+    if roi > 40 and profit_margin > 20:
+        st.success("✅ Strong launch opportunity")
+    elif roi > 20:
+        st.warning("⚠️ Moderate opportunity")
+    else:
+        st.error("❌ Weak profitability")
 
     # ---------------- CSV EXPORT ----------------
     csv = top8.to_csv(index=False).encode("utf-8")
