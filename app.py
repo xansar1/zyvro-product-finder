@@ -191,22 +191,22 @@ if uploaded_file:
    if not gap_df.empty:
        best_gap = gap_df.iloc[0]
 
-   st.success(
-      f"🚀 Best Market Gap: {best_gap['title']} | "
-      f"{best_gap['category']} | "
-      f"{best_gap['Trend Status']}"
-  )
+       st.success(
+           f"🚀 Best Market Gap: {best_gap['title']} | "
+           f"{best_gap['category']} | "
+           f"{best_gap['Trend Status']}"
+       )
 
-  st.dataframe(
-     gap_df[[
-         "title",
-         "category",
-         "Competition",
-         "Trend Status",
-         "Winning Score",
-          "Estimated Margin"
-          ]]
- )
+       st.dataframe(
+           gap_df[[
+               "title",
+               "category",
+               "Competition",
+               "Trend Status",
+               "Winning Score",
+               "Estimated Margin"
+         ]]
+     )
  else:
      st.warning("⚠️ No strong market gaps found in uploaded CSV.")
 
