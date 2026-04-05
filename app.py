@@ -179,6 +179,37 @@ if uploaded_file:
     else:
         st.error("❌ Weak profitability")
 
+    # ---------------- MARKET GAP FINDER ----------------
+    st.subheader("🎯 Market Gap Finder")
+
+    gap_df = top8[
+        (top8["Competition"] != "High") &
+        (top8["Trend Status"] != "📉 Declining") &
+        (top8["Winning Score"] > 60)
+   ].copy()
+
+   if not gap_df.empty:
+       best_gap = gap_df.iloc[0]
+
+   st.success(
+      f"🚀 Best Market Gap: {best_gap['title']} | "
+      f"{best_gap['category']} | "
+      f"{best_gap['Trend Status']}"
+  )
+
+  st.dataframe(
+     gap_df[[
+         "title",
+         "category",
+         "Competition",
+         "Trend Status",
+         "Winning Score",
+          "Estimated Margin"
+          ]]
+ )
+ else:
+     st.warning("⚠️ No strong market gaps found in uploaded CSV.")
+
     # ---------------- CSV EXPORT ----------------
     csv = top8.to_csv(index=False).encode("utf-8")
 
