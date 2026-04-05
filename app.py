@@ -168,9 +168,9 @@ if uploaded_file:
     roi = (net_profit / sourcing_cost) * 100 if sourcing_cost > 0 else 0
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("💰 Net Profit", f"₹{round(net_profit,2)}")
-    c2.metric("📈 Margin %", f"{round(profit_margin,2)}%")
-    c3.metric("🚀 ROI %", f"{round(roi,2)}%")
+    c1.metric("💰 Net Profit", f"₹{round(net_profit, 2)}")
+    c2.metric("📈 Margin %", f"{round(profit_margin, 2)}%")
+    c3.metric("🚀 ROI %", f"{round(roi, 2)}%")
 
     if roi > 40 and profit_margin > 20:
         st.success("✅ Strong launch opportunity")
@@ -186,29 +186,29 @@ if uploaded_file:
         (top8["Competition"] != "High") &
         (top8["Trend Status"] != "📉 Declining") &
         (top8["Winning Score"] > 60)
-   ].copy()
+    ].copy()
 
-   if not gap_df.empty:
-       best_gap = gap_df.iloc[0]
+    if not gap_df.empty:
+        best_gap = gap_df.iloc[0]
 
-       st.success(
-           f"🚀 Best Market Gap: {best_gap['title']} | "
-           f"{best_gap['category']} | "
-           f"{best_gap['Trend Status']}"
-       )
+        st.success(
+            f"🚀 Best Market Gap: {best_gap['title']} | "
+            f"{best_gap['category']} | "
+            f"{best_gap['Trend Status']}"
+        )
 
-       st.dataframe(
-           gap_df[[
-               "title",
-               "category",
-               "Competition",
-               "Trend Status",
-               "Winning Score",
-               "Estimated Margin"
-         ]]
-     )
- else:
-     st.warning("⚠️ No strong market gaps found in uploaded CSV.")
+        st.dataframe(
+            gap_df[[
+                "title",
+                "category",
+                "Competition",
+                "Trend Status",
+                "Winning Score",
+                "Estimated Margin"
+            ]]
+        )
+    else:
+        st.warning("⚠️ No strong market gaps found in uploaded CSV.")
 
     # ---------------- CSV EXPORT ----------------
     csv = top8.to_csv(index=False).encode("utf-8")
