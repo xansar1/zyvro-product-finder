@@ -230,5 +230,33 @@ if product_name:
     st.markdown("### 🎥 UGC Creative Script")
     st.code(ugc_script)
 
-else:
-    st.info("👆 Type a product idea above to validate its ad potential.")
+    # ---------------- CAMPAIGN STRATEGY PLANNER ----------------
+   st.subheader("🚀 Campaign Strategy Planner")
+
+   budget = max(scale_score * 20, 1000)
+   target_cpa = round(budget * 0.12, 2)
+   expected_ctr = round((wow + hook) / 2 * 0.8, 2)
+
+   st.markdown(f"""
+   ### 📊 Launch Blueprint
+   - 🎯 *Cold Audience Angle:* {angle}
+   - 🔁 *Retargeting Angle:* Social proof + urgency
+   - 💰 *Suggested Daily Budget:* ₹{round(budget, 2)}
+   - 🎯 *Target CPA:* ₹{target_cpa}
+   - 👆 *Expected CTR:* {expected_ctr}%
+   - 🚀 *Launch Decision:* {'Scale aggressively' if scale_score > 80 else 'Test cautiously'}
+   """)
+
+   st.subheader("💸 Offer Engineering")
+
+  if scale_score > 80:
+    offer = "Buy 2 Get 1 Free"
+  elif scale_score > 60:
+      offer = "20% Launch Discount"
+  else:
+      offer = "Free Shipping Offer"
+
+  st.success(f"🎁 Recommended Offer: {offer}")
+
+   else:
+       st.info("👆 Type a product idea above to validate its ad potential.")
