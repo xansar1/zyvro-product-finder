@@ -86,6 +86,80 @@ def filter_product_keywords(products):
 
     return final_products
 
+def niche_fallback_products(niche):
+    niche = niche.lower()
+
+    niche_map = {
+        "beauty": [
+            "face", "skin", "hair", "acne", "anti aging",
+            "eye", "lip", "glow", "pimple", "spa"
+        ],
+        "fitness": [
+            "muscle", "core", "waist", "leg", "arm",
+            "posture", "back", "recovery", "yoga"
+        ],
+        "pet": [
+            "dog", "cat", "pet fur", "pet feeding",
+            "pet grooming", "pet cleaning"
+        ],
+        "kitchen": [
+            "vegetable", "portable", "oil", "fruit",
+            "storage", "coffee", "knife"
+        ],
+        "car": [
+            "dashboard", "vacuum", "scratch", "seat",
+            "air freshener", "phone", "mirror"
+        ],
+        "fashion": [
+            "women", "men", "girls", "kids",
+            "party", "casual", "summer", "winter"
+        ],
+        "accessories": [
+            "watch", "wallet", "belt", "chain",
+            "bracelet", "ring", "sunglasses", "cap"
+        ],
+        "kids": [
+            "baby", "kids", "school", "feeding",
+            "learning", "travel", "toy"
+        ],
+        "cosmetics": [
+            "lip", "face", "foundation", "eyeliner",
+            "perfume", "serum", "cream", "glow"
+        ]
+    }
+
+    product_suffixes = [
+        # utility
+        "mask", "roller", "patch", "remover", "cleaner",
+        "brush", "holder", "light", "vacuum", "massager",
+        "band", "gun", "bottle", "projector", "blender",
+        "chopper", "trimmer", "device", "machine", "kit",
+
+        # fashion / accessories
+        "dress", "shirt", "hoodie", "jeans", "jacket",
+        "watch", "wallet", "belt", "chain", "bracelet",
+        "ring", "sunglasses", "bag", "heels", "sneakers",
+        "sandals", "cap", "scarf",
+
+        # cosmetics
+        "lipstick", "serum", "foundation", "perfume",
+        "face wash", "cream", "moisturizer", "eyeliner",
+
+        # kids
+        "toy", "school bag", "feeder", "bottle",
+        "stroller", "learning board", "shoes"
+    ]
+
+    base_terms = niche_map.get(niche, [niche])
+
+    generated_products = []
+
+    for term in base_terms:
+        for suffix in product_suffixes:
+            generated_products.append(f"{term} {suffix}")
+
+    return list(dict.fromkeys(generated_products))[:150]
+
 
 # ---------------- MARKETING ENGINE ----------------
 def generate_marketing_scores(name):
