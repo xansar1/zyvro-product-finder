@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from io import BytesIO
 from pytrends.request import TrendReq
 from urllib.parse import quote_plus
 
@@ -11,21 +10,39 @@ st.set_page_config(
     layout="wide"
 )
 
+# ---------------- PREMIUM CSS ----------------
+st.markdown("""
+<style>
+.main {
+    background: linear-gradient(135deg, #0f172a, #111827);
+}
+.block-container {
+    padding-top: 2rem;
+}
+div[data-testid="metric-container"] {
+    background: #111827;
+    border: 1px solid #374151;
+    padding: 15px;
+    border-radius: 14px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ---------------- HEADER ----------------
 st.title("🔥 ZYVRO AI - Real Product Discovery Engine")
 st.write(
     "Discover real physical products from Google demand signals + "
     "AI marketer strategy 🚀"
 )
-
 st.caption(
     "Built for D2C brands, media buyers, dropshippers, "
     "performance marketers, and ecommerce founders"
 )
 
-# ---------------- INPUT ----------------
-niche = st.text_input(
-    "🎯 Enter Niche",
+# ---------------- SIDEBAR ----------------
+st.sidebar.header("🎯 Product Discovery")
+niche = st.sidebar.text_input(
+    "Enter Niche",
     placeholder="beauty, fitness, pet, kitchen, car"
 )
 
@@ -56,14 +73,12 @@ def fetch_related_products(keyword):
     except Exception:
         return []
 
-
-# ---------------- PRODUCT FILTER ----------------
+# ---------------- FILTER ----------------
 def filter_product_keywords(products):
     blocked_words = [
         "near me", "salon", "parlour", "clinic", "service",
         "course", "training", "job", "tips", "routine",
-        "makeup artist", "spa", "school", "academy",
-        "price list", "shop near", "center"
+        "spa", "academy"
     ]
 
     final_products = []
@@ -75,54 +90,30 @@ def filter_product_keywords(products):
 
     return final_products
 
-
-# ---------------- FALLBACK PRODUCTS ----------------
+# ---------------- FALLBACK ----------------
 def niche_fallback_products(niche):
-    base_terms = [niche]
-
-    product_suffixes = [
+    suffixes = [
         "serum", "cream", "mask", "patch", "cleaner",
         "brush", "vacuum", "massager", "kit", "device",
-        "dress", "hoodie", "watch", "wallet", "bag",
-        "lipstick", "perfume", "toy", "bottle", "shoes"
+        "dress", "watch", "wallet", "bag", "toy"
     ]
 
-    generated_products = []
+    generated = []
+    for suffix in suffixes:
+        generated.append(f"{niche} {suffix}")
 
-    for term in base_terms:
-        for suffix in product_suffixes:
-            generated_products.append(f"{term} {suffix}")
+    return generated[:100]
 
-    return list(dict.fromkeys(generated_products))[:150]
-
-
-# ---------------- EXACT PRODUCT PICKER ----------------
+# ---------------- EXACT LISTING ----------------
 def pick_exact_listing(product_name):
-    product_lower = product_name.lower()
-
-    exact_title = product_name.title()
-
-    if any(k in product_lower for k in ["serum", "cream", "mask", "patch"]):
-        exact_title += " - Premium Bestseller"
-        price = 599
-    elif any(k in product_lower for k in ["watch", "wallet", "bag", "dress"]):
-        exact_title += " - Trending Fashion Bestseller"
-        price = 899
-    elif any(k in product_lower for k in ["toy", "baby", "kids"]):
-        exact_title += " - Top Kids Bestseller"
-        price = 699
-    else:
-        exact_title += " - Top Rated Bestseller"
-        price = 499
-
+    exact_title = f"{product_name.title()} - Premium Bestseller"
     link = f"https://www.amazon.in/s?k={quote_plus(product_name)}"
+    price = 599
     rating = 4.4
     reviews = 2500
-
     return exact_title, link, price, rating, reviews
 
-
-# ---------------- MARKETING ENGINE ----------------
+# ---------------- SCORE ENGINE ----------------
 def generate_marketing_scores(name):
     name = name.lower()
 
@@ -153,7 +144,6 @@ def generate_marketing_scores(name):
 
     return wow, problem, impulse, hook, round(score, 2)
 
-
 def trend_label(score):
     if score > 80:
         return "🚀 Breakout"
@@ -161,14 +151,12 @@ def trend_label(score):
         return "📈 Rising"
     return "📉 Stable"
 
-
 def offer_engine(score):
     if score > 80:
         return "Buy 2 Get 1 Free"
     elif score > 60:
         return "20% Launch Discount"
     return "Free Shipping Offer"
-
 
 # ---------------- MAIN ----------------
 if niche:
@@ -200,93 +188,108 @@ if niche:
         df = pd.DataFrame(discovery_rows)
         df = df.sort_values("Scale Score", ascending=False).reset_index(drop=True)
 
-        st.success(f"🔥 Found {len(df)} real sellable products")
+        # ---------------- KPI ROW ----------------
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("📦 Products Found", len(df))
+        k2.metric("🚀 Top Score", round(df["Scale Score"].max(), 2))
+        k3.metric("📈 Rising", len(df[df["Trend"] == "📈 Rising"]))
+        k4.metric("🔥 Breakout", len(df[df["Trend"] == "🚀 Breakout"]))
 
-        # ---------------- TABLE ----------------
-        st.subheader("📊 Product Opportunity Table")
-        st.dataframe(
-            df,
-            column_config={
-                "Product Link": st.column_config.LinkColumn("🔗 Product Link")
-            },
-            use_container_width=True
-        )
+        # ---------------- TABS ----------------
+        tab1, tab2, tab3 = st.tabs([
+            "📊 Discovery Dashboard",
+            "🛒 Exact Listing",
+            "🚀 Launch Strategy"
+        ])
 
-        # ---------------- SELECT PRODUCT ----------------
-        selected_product = st.selectbox(
-            "🚀 Select Product to Launch",
-            df["Product"]
-        )
+        with tab1:
+            st.subheader("📊 Product Opportunity Table")
+            st.dataframe(
+                df,
+                column_config={
+                    "Product Link": st.column_config.LinkColumn("🔗 Product Link")
+                },
+                use_container_width=True,
+                height=500
+            )
+
+            selected_product = st.selectbox(
+                "🚀 Select Product to Launch",
+                df["Product"]
+            )
 
         selected_row = df[df["Product"] == selected_product].iloc[0]
 
-        # ---------------- EXACT LISTING ----------------
-        exact_title, exact_link, exact_price, exact_rating, exact_reviews = pick_exact_listing(selected_product)
+        with tab2:
+            exact_title, exact_link, exact_price, exact_rating, exact_reviews = pick_exact_listing(selected_product)
 
-        st.subheader("🛒 Exact Product Listing Recommendation")
-        st.markdown(f"""
+            st.markdown(f"""
 ### 🏆 Best Exact Listing
-- **Title:** {exact_title}
-- **Price:** ₹{exact_price}
-- **Rating:** ⭐ {exact_rating}
-- **Reviews:** 💬 {exact_reviews}
-- **Amazon Link:** {exact_link}
+**Title:** {exact_title}
+
+**Price:** ₹{exact_price}
+
+**Rating:** ⭐ {exact_rating}
+
+**Reviews:** 💬 {exact_reviews}
+
+**Amazon Link:** {exact_link}
 """)
 
-        # ---------------- KPI ----------------
-        st.subheader("📈 Product Intelligence")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("✨ Wow", selected_row["Wow"])
+            c2.metric("🧩 Problem", selected_row["Problem"])
+            c3.metric("🛒 Impulse", selected_row["Impulse"])
+            c4.metric("🎥 Hook", selected_row["Hook"])
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("✨ Wow", selected_row["Wow"])
-        c2.metric("🧩 Problem", selected_row["Problem"])
-        c3.metric("🛒 Impulse", selected_row["Impulse"])
-        c4.metric("🎥 Hook", selected_row["Hook"])
+            score_df = pd.DataFrame({
+                "Metric": ["Wow", "Problem", "Impulse", "Hook"],
+                "Score": [
+                    selected_row["Wow"],
+                    selected_row["Problem"],
+                    selected_row["Impulse"],
+                    selected_row["Hook"]
+                ]
+            })
 
-        # ---------------- CHART ----------------
-        score_df = pd.DataFrame({
-            "Metric": ["Wow", "Problem", "Impulse", "Hook"],
-            "Score": [
-                selected_row["Wow"],
-                selected_row["Problem"],
-                selected_row["Impulse"],
-                selected_row["Hook"]
-            ]
-        })
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.bar(score_df["Metric"], score_df["Score"])
+            ax.set_ylim(0, 10)
+            ax.set_title("Creative Performance Potential")
+            plt.tight_layout()
+            st.pyplot(fig)
 
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.bar(score_df["Metric"], score_df["Score"])
-        ax.set_ylim(0, 10)
-        ax.set_title("Creative Performance Potential")
-        plt.tight_layout()
+        with tab3:
+            st.success(
+                f"📈 {selected_product} → {selected_row['Trend']} | "
+                f"Scale Score: {selected_row['Scale Score']}"
+            )
 
-        buf = BytesIO()
-        plt.savefig(buf, format="png")
-        st.image(buf)
+            offer = offer_engine(selected_row["Scale Score"])
+            st.success(f"🎁 Recommended Offer: {offer}")
 
-        # ---------------- STRATEGY ----------------
-        st.subheader("🚀 Launch Strategy")
-        st.success(
-            f"📈 {selected_product} → {selected_row['Trend']} | "
-            f"Scale Score: {selected_row['Scale Score']}"
-        )
+            predicted_ctr = round(
+                (selected_row["Wow"] + selected_row["Hook"]) / 2 * 0.7, 2
+            )
+            predicted_roas = round(
+                max(selected_row["Scale Score"] / 20, 1.2), 2
+            )
 
-        # ---------------- OFFER ----------------
-        offer = offer_engine(selected_row["Scale Score"])
-        st.subheader("💸 Offer Engineering")
-        st.success(f"🎁 Recommended Offer: {offer}")
+            s1, s2 = st.columns(2)
+            s1.metric("👆 Predicted CTR", f"{predicted_ctr}%")
+            s2.metric("🚀 Predicted ROAS", f"{predicted_roas}x")
 
-        # ---------------- CSV EXPORT ----------------
-        csv = df.to_csv(index=False).encode("utf-8")
+            csv = df.to_csv(index=False).encode("utf-8")
 
-        st.download_button(
-            "📥 Download Real Product Research CSV",
-            data=csv,
-            file_name=f"{niche}_real_product_research.csv",
-            mime="text/csv"
-        )
+            st.download_button(
+                "📥 Download Research CSV",
+                data=csv,
+                file_name=f"{niche}_real_product_research.csv",
+                mime="text/csv"
+            )
 
     else:
-        st.warning("⚠️ No sellable physical products found for this niche.")
+        st.warning("⚠️ No sellable physical products found.")
 
 else:
-    st.info("👆 Enter a niche to discover real winning products.")
+    st.info("👈 Enter a niche in sidebar to start product discovery.")
