@@ -249,14 +249,39 @@ if product_name:
 
    st.subheader("💸 Offer Engineering")
 
-  if scale_score > 80:
-    offer = "Buy 2 Get 1 Free"
-  elif scale_score > 60:
-      offer = "20% Launch Discount"
-  else:
-      offer = "Free Shipping Offer"
+   if scale_score > 80:
+     offer = "Buy 2 Get 1 Free"
+   elif scale_score > 60:
+       offer = "20% Launch Discount"
+   else:
+       offer = "Free Shipping Offer"
 
-  st.success(f"🎁 Recommended Offer: {offer}")
+   st.success(f"🎁 Recommended Offer: {offer}")
+
+   # ---------------- LANDING PAGE COPY GENERATOR ----------------
+   st.subheader("🧲 Landing Page Copy Generator")
+
+   headline = f"Transform Your Daily Routine with {product_name.title()}"
+   subheadline = (
+       f"Experience the easiest way to solve your problem using {product_name} "
+       f"with fast results and premium quality."
+   )
+
+   if scale_score > 80:
+       cta = "🔥 Get Yours Before Today’s Offer Ends"
+   elif scale_score > 60:
+       cta = "🚀 Try It Risk-Free Today"
+   else:
+       cta = "✨ Discover the Product Today"
+
+   st.markdown(f"""
+   ### 📰 Landing Page Hero Section
+   **Headline:** {headline}
+
+   **Subheadline:** {subheadline}
+
+   **CTA Button:** {cta}
+   """)
 
    else:
        st.info("👆 Type a product idea above to validate its ad potential.")
