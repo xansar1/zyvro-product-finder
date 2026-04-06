@@ -229,8 +229,11 @@ if niche:
         for product in products:
             wow, problem, impulse, hook, scale_score = generate_marketing_scores(product)
 
+            product_link = f"https://www.amazon.in/s?k={product.replace(' ', '+')}"
+            
             discovery_rows.append({
                 "Product": product,
+                "Product Link": product_link,
                 "Wow": wow,
                 "Problem": problem,
                 "Impulse": impulse,
@@ -249,7 +252,11 @@ if niche:
 
         # ---------------- TABLE ----------------
         st.subheader("📊 Product Opportunity Table")
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(
+            df,
+            column_config={
+                "Product Link": st.column_config.LinkColumn("🔗 product Link")
+            use_container_width=True)
 
         # ---------------- SELECT PRODUCT ----------------
         selected_product = st.selectbox(
