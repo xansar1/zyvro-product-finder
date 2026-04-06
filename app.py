@@ -13,7 +13,7 @@ st.set_page_config(
 # ---------------- HEADER ----------------
 st.title("🔥 ZYVRO AI - Real Product Discovery Engine")
 st.write(
-    "Discover 100+ real rising products from Google demand signals + "
+    "Discover real physical products from Google demand signals + "
     "AI marketer strategy 🚀"
 )
 
@@ -50,12 +50,41 @@ def fetch_related_products(keyword):
         if top is not None:
             final_products.extend(top["query"].tolist())
 
-        # remove duplicates
-        final_products = list(dict.fromkeys(final_products))
-        return final_products[:100]
+        return list(dict.fromkeys(final_products))[:100]
 
     except Exception:
         return []
+
+
+# ---------------- PRODUCT FILTER ----------------
+def filter_product_keywords(products):
+    blocked_words = [
+        "near me", "salon", "parlour", "clinic", "service",
+        "course", "training", "job", "tips", "routine",
+        "makeup artist", "spa", "school", "academy",
+        "price list", "shop near", "center"
+    ]
+
+    product_words = [
+        "mask", "roller", "patch", "cleaner", "remover",
+        "brush", "bottle", "holder", "light", "vacuum",
+        "corrector", "massager", "band", "gun", "feeder",
+        "toy", "projector", "blender", "chopper", "trimmer",
+        "epilator", "device", "machine", "kit"
+    ]
+
+    final_products = []
+
+    for p in products:
+        text = p.lower()
+
+        if any(b in text for b in blocked_words):
+            continue
+
+        if any(w in text for w in product_words):
+            final_products.append(p)
+
+    return final_products
 
 
 # ---------------- MARKETING ENGINE ----------------
@@ -80,13 +109,6 @@ def generate_marketing_scores(name):
     ]):
         wow += 4
         hook += 4
-
-    if any(k in name for k in [
-        "pet", "baby", "kitchen",
-        "fitness", "beauty", "car"
-    ]):
-        problem += 2
-        hook += 2
 
     wow = min(wow, 10)
     problem = min(problem, 10)
@@ -121,7 +143,8 @@ def offer_engine(score):
 
 # ---------------- MAIN ----------------
 if niche:
-    products = fetch_related_products(niche)
+    raw_products = fetch_related_products(niche)
+    products = filter_product_keywords(raw_products)
 
     if products:
         discovery_rows = []
@@ -145,13 +168,13 @@ if niche:
             ascending=False
         ).reset_index(drop=True)
 
-        st.success(f"🔥 Found {len(df)} real products from live Google demand")
+        st.success(f"🔥 Found {len(df)} real sellable products")
 
         # ---------------- TABLE ----------------
-        st.subheader("📊 Real Product Opportunity Table")
+        st.subheader("📊 Product Opportunity Table")
         st.dataframe(df, use_container_width=True)
 
-        # ---------------- PRODUCT SELECT ----------------
+        # ---------------- SELECT PRODUCT ----------------
         selected_product = st.selectbox(
             "🚀 Select Product to Launch",
             df["Product"]
@@ -219,6 +242,26 @@ if niche:
         k2.metric("🛒 CVR", f"{predicted_cvr}%")
         k3.metric("🚀 ROAS", f"{predicted_roas}x")
 
+        # ---------------- VIRALITY ENGINE ----------------
+        st.subheader("🎬 Virality & Creative Angle Engine")
+
+        scale_probability = min(
+            round(selected_row["Scale Score"] * 1.1, 2),
+            99
+        )
+
+        v1, v2, v3 = st.columns(3)
+        v1.metric("🎯 Audience", "Broad Ecommerce")
+        v2.metric("🎬 UGC Style", "Pain Point → Demo")
+        v3.metric("🚀 Scale %", f"{scale_probability}%")
+
+        st.markdown(f"""
+### 🎥 First Creative Hooks
+- I can't believe this {selected_product} actually works
+- Why is nobody talking about this {selected_product}?
+- This product is going viral for a reason
+""")
+
         # ---------------- CSV EXPORT ----------------
         csv = df.to_csv(index=False).encode("utf-8")
 
@@ -230,7 +273,7 @@ if niche:
         )
 
     else:
-        st.warning("⚠️ No real products found for this niche.")
+        st.warning("⚠️ No sellable physical products found for this niche.")
 
 else:
-    st.info("👆 Enter a niche to discover 100+ real winning products.")
+    st.info("👆 Enter a niche to discover real winning products.")
