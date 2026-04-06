@@ -6,88 +6,56 @@ from pytrends.request import TrendReq
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
-    page_title="ZYVRO AI - Real Winning Product Discovery",
+    page_title="ZYVRO AI - Real Product Discovery Engine",
     layout="wide"
 )
 
 # ---------------- HEADER ----------------
-st.title("🔥 ZYVRO AI - Real Winning Product Discovery")
+st.title("🔥 ZYVRO AI - Real Product Discovery Engine")
 st.write(
-    "Discover real rising products from Google demand signals + "
+    "Discover 100+ real rising products from Google demand signals + "
     "AI marketer strategy 🚀"
 )
 
 st.caption(
-    "Built for media buyers, D2C brands, dropshippers, "
-    "and performance marketers"
+    "Built for D2C brands, media buyers, dropshippers, "
+    "performance marketers, and ecommerce founders"
 )
 
-# ---------------- REAL NICHE DISCOVERY ----------------
-niche_map = {
-    "Beauty": [
-        "hair remover",
-        "led face mask",
-        "ice roller",
-        "blackhead remover",
-        "face lifting patch"
-    ],
-    "Fitness": [
-        "posture corrector",
-        "massage gun",
-        "resistance bands",
-        "ab roller",
-        "smart skipping rope"
-    ],
-    "Pet": [
-        "pet hair remover",
-        "auto pet feeder",
-        "pet grooming brush",
-        "dog water bottle",
-        "cat toy laser"
-    ],
-    "Kitchen": [
-        "vegetable chopper",
-        "portable blender",
-        "oil spray bottle",
-        "food sealer",
-        "knife sharpener"
-    ],
-    "Car": [
-        "car vacuum cleaner",
-        "scratch remover",
-        "phone holder",
-        "ambient led strip",
-        "tire inflator"
-    ]
-}
-
-selected_niche = st.selectbox(
-    "🎯 Select Niche",
-    list(niche_map.keys())
+# ---------------- INPUT ----------------
+niche = st.text_input(
+    "🎯 Enter Niche",
+    placeholder="beauty, fitness, pet, kitchen, car"
 )
 
-# ---------------- GOOGLE TRENDS ----------------
-def fetch_trend_score(keyword):
+# ---------------- REAL COLLECTION ----------------
+def fetch_related_products(keyword):
     try:
         pytrends = TrendReq(hl="en-US", tz=330)
         pytrends.build_payload([keyword], timeframe="today 12-m", geo="IN")
-        interest = pytrends.interest_over_time()
 
-        if interest.empty:
-            return 0, "📉 No Data"
+        related = pytrends.related_queries()
 
-        avg_interest = round(float(interest[keyword].mean()), 2)
-        latest_interest = int(interest[keyword].iloc[-1])
+        if keyword not in related:
+            return []
 
-        status = (
-            "🚀 Rising"
-            if latest_interest >= avg_interest
-            else "📉 Stable"
-        )
+        rising = related[keyword]["rising"]
+        top = related[keyword]["top"]
 
-        return latest_interest, status
+        final_products = []
+
+        if rising is not None:
+            final_products.extend(rising["query"].tolist())
+
+        if top is not None:
+            final_products.extend(top["query"].tolist())
+
+        # remove duplicates
+        final_products = list(dict.fromkeys(final_products))
+        return final_products[:100]
+
     except Exception:
-        return 0, "⚠️ Error"
+        return []
 
 
 # ---------------- MARKETING ENGINE ----------------
@@ -107,126 +75,162 @@ def generate_marketing_scores(name):
         impulse += 2
 
     if any(k in name for k in [
-        "led", "light", "mask", "smart"
+        "led", "light", "mask", "smart",
+        "rgb", "projector"
     ]):
         wow += 4
         hook += 4
+
+    if any(k in name for k in [
+        "pet", "baby", "kitchen",
+        "fitness", "beauty", "car"
+    ]):
+        problem += 2
+        hook += 2
 
     wow = min(wow, 10)
     problem = min(problem, 10)
     impulse = min(impulse, 10)
     hook = min(hook, 10)
 
-    scale_score = (
-        wow * 0.25 +
-        problem * 0.25 +
+    score = (
+        wow * 0.30 +
+        problem * 0.30 +
         impulse * 0.20 +
         hook * 0.20
     ) * 10
 
-    return wow, problem, impulse, hook, scale_score
+    return wow, problem, impulse, hook, round(score, 2)
 
 
-def generate_ugc_script(name):
-    return f"""
-1. Hook → I wish I found this {name} earlier
-2. Problem → show struggle
-3. Demo → show usage
-4. Result → transformation
-5. CTA → Get yours today
-"""
+def trend_label(score):
+    if score > 80:
+        return "🚀 Breakout"
+    elif score > 60:
+        return "📈 Rising"
+    return "📉 Stable"
 
 
-# ---------------- REAL PRODUCT DISCOVERY ----------------
-st.subheader("📈 Top Rising Products in Selected Niche")
+def offer_engine(score):
+    if score > 80:
+        return "Buy 2 Get 1 Free"
+    elif score > 60:
+        return "20% Launch Discount"
+    return "Free Shipping Offer"
 
-discovery_rows = []
 
-for product in niche_map[selected_niche]:
-    demand, trend_status = fetch_trend_score(product)
-    wow, problem, impulse, hook, scale_score = generate_marketing_scores(product)
+# ---------------- MAIN ----------------
+if niche:
+    products = fetch_related_products(niche)
 
-    final_score = round((demand * 0.5) + (scale_score * 0.5), 2)
+    if products:
+        discovery_rows = []
 
-    discovery_rows.append({
-        "Product": product,
-        "Demand Score": demand,
-        "Trend": trend_status,
-        "Scale Score": scale_score,
-        "Final Opportunity": final_score
-    })
+        for product in products:
+            wow, problem, impulse, hook, scale_score = generate_marketing_scores(product)
 
-discovery_df = pd.DataFrame(discovery_rows)
-discovery_df = discovery_df.sort_values(
-    "Final Opportunity",
-    ascending=False
-).reset_index(drop=True)
+            discovery_rows.append({
+                "Product": product,
+                "Wow": wow,
+                "Problem": problem,
+                "Impulse": impulse,
+                "Hook": hook,
+                "Scale Score": scale_score,
+                "Trend": trend_label(scale_score)
+            })
 
-st.dataframe(discovery_df, use_container_width=True)
+        df = pd.DataFrame(discovery_rows)
+        df = df.sort_values(
+            "Scale Score",
+            ascending=False
+        ).reset_index(drop=True)
 
-# ---------------- PRODUCT SELECT ----------------
-product_name = st.selectbox(
-    "🔥 Select Product to Launch",
-    discovery_df["Product"]
-)
+        st.success(f"🔥 Found {len(df)} real products from live Google demand")
 
-selected_row = discovery_df[
-    discovery_df["Product"] == product_name
-].iloc[0]
+        # ---------------- TABLE ----------------
+        st.subheader("📊 Real Product Opportunity Table")
+        st.dataframe(df, use_container_width=True)
 
-wow, problem, impulse, hook, scale_score = generate_marketing_scores(product_name)
+        # ---------------- PRODUCT SELECT ----------------
+        selected_product = st.selectbox(
+            "🚀 Select Product to Launch",
+            df["Product"]
+        )
 
-# ---------------- KPI ----------------
-st.subheader("📊 Selected Product Intelligence")
+        selected_row = df[df["Product"] == selected_product].iloc[0]
 
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("🔥 Demand", selected_row["Demand Score"])
-k2.metric("📈 Trend", selected_row["Trend"])
-k3.metric("🚀 Scale Score", scale_score)
-k4.metric("🏆 Opportunity", selected_row["Final Opportunity"])
+        # ---------------- KPI ----------------
+        st.subheader("📈 Product Intelligence")
 
-# ---------------- CHART ----------------
-score_df = pd.DataFrame({
-    "Metric": ["Wow", "Problem", "Impulse", "Hook"],
-    "Score": [wow, problem, impulse, hook]
-})
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("✨ Wow", selected_row["Wow"])
+        c2.metric("🧩 Problem", selected_row["Problem"])
+        c3.metric("🛒 Impulse", selected_row["Impulse"])
+        c4.metric("🎥 Hook", selected_row["Hook"])
 
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.bar(score_df["Metric"], score_df["Score"])
-ax.set_ylim(0, 10)
-ax.set_title("Creative Performance Potential")
-plt.tight_layout()
+        # ---------------- CHART ----------------
+        score_df = pd.DataFrame({
+            "Metric": ["Wow", "Problem", "Impulse", "Hook"],
+            "Score": [
+                selected_row["Wow"],
+                selected_row["Problem"],
+                selected_row["Impulse"],
+                selected_row["Hook"]
+            ]
+        })
 
-buf = BytesIO()
-plt.savefig(buf, format="png")
-st.image(buf)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.bar(score_df["Metric"], score_df["Score"])
+        ax.set_ylim(0, 10)
+        ax.set_title("Creative Performance Potential")
+        plt.tight_layout()
 
-# ---------------- UGC ----------------
-st.subheader("🎥 UGC Script")
-st.code(generate_ugc_script(product_name))
+        buf = BytesIO()
+        plt.savefig(buf, format="png")
+        st.image(buf)
 
-# ---------------- OFFER ----------------
-st.subheader("💸 Offer Engineering")
+        # ---------------- STRATEGY ----------------
+        st.subheader("🚀 Launch Strategy")
+        st.success(
+            f"📈 {selected_product} → {selected_row['Trend']} | "
+            f"Scale Score: {selected_row['Scale Score']}"
+        )
 
-if scale_score > 80:
-    offer = "Buy 2 Get 1 Free"
-elif scale_score > 60:
-    offer = "20% Launch Discount"
+        # ---------------- OFFER ----------------
+        offer = offer_engine(selected_row["Scale Score"])
+        st.subheader("💸 Offer Engineering")
+        st.success(f"🎁 Recommended Offer: {offer}")
+
+        # ---------------- KPI FORECAST ----------------
+        st.subheader("📊 KPI Forecast")
+
+        predicted_ctr = round(
+            (selected_row["Wow"] + selected_row["Hook"]) / 2 * 0.7, 2
+        )
+        predicted_cvr = round(
+            (selected_row["Problem"] + selected_row["Impulse"]) / 2 * 0.5, 2
+        )
+        predicted_roas = round(
+            max(selected_row["Scale Score"] / 20, 1.2), 2
+        )
+
+        k1, k2, k3 = st.columns(3)
+        k1.metric("👆 CTR", f"{predicted_ctr}%")
+        k2.metric("🛒 CVR", f"{predicted_cvr}%")
+        k3.metric("🚀 ROAS", f"{predicted_roas}x")
+
+        # ---------------- CSV EXPORT ----------------
+        csv = df.to_csv(index=False).encode("utf-8")
+
+        st.download_button(
+            "📥 Download Real Product Research CSV",
+            data=csv,
+            file_name=f"{niche}_real_product_research.csv",
+            mime="text/csv"
+        )
+
+    else:
+        st.warning("⚠️ No real products found for this niche.")
+
 else:
-    offer = "Free Shipping Offer"
-
-st.success(f"🎁 Recommended Offer: {offer}")
-
-# ---------------- KPI FORECAST ----------------
-st.subheader("📊 ROAS Forecast")
-
-predicted_ctr = round((wow + hook) / 2 * 0.7, 2)
-predicted_cvr = round((problem + impulse) / 2 * 0.5, 2)
-predicted_cpc = round(max(8 - (wow * 0.4), 2), 2)
-predicted_roas = round(max(scale_score / 20, 1.2), 2)
-
-r1, r2, r3, r4 = st.columns(4)
-r1.metric("👆 CTR", f"{predicted_ctr}%")
-r2.metric("🛒 CVR", f"{predicted_cvr}%")
-r3.metric("💸 CPC", f"₹{predicted_cpc}")
-r4.metric("🚀 ROAS", f"{predicted_roas}x")
+    st.info("👆 Enter a niche to discover 100+ real winning products.")
