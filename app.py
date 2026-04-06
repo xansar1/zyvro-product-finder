@@ -283,5 +283,21 @@ if product_name:
    **CTA Button:** {cta}
    """)
 
+   # ---------------- KPI FORECAST DASHBOARD ----------------
+   st.subheader("📊 ROAS & KPI Forecast Dashboard")
+
+   predicted_ctr = round((wow + hook) / 2 * 0.7, 2)
+   predicted_cvr = round((problem + impulse) / 2 * 0.5, 2)
+   predicted_cpc = round(max(8 - (wow * 0.4), 2), 2)
+   predicted_cpa = round(predicted_cpc * 10, 2)
+   predicted_roas = round(max(scale_score / 20, 1.2), 2)
+
+   k1, k2, k3, k4, k5 = st.columns(5)
+   k1.metric("👆 CTR", f"{predicted_ctr}%")
+   k2.metric("💸 CPC", f"₹{predicted_cpc}")
+   k3.metric("🛒 CVR", f"{predicted_cvr}%")
+   k4.metric("🎯 CPA", f"₹{predicted_cpa}")
+   k5.metric("🚀 ROAS", f"{predicted_roas}x")
+
    else:
        st.info("👆 Type a product idea above to validate its ad potential.")
