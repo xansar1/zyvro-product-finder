@@ -60,7 +60,6 @@ def generate_marketing_scores(name):
         problem += 2
         hook += 2
 
-    # Clamp max
     wow = min(wow, 10)
     problem = min(problem, 10)
     impulse = min(impulse, 10)
@@ -95,14 +94,37 @@ def hook_angle(name):
         return "Emotional + relatable lifestyle angle"
     return "Problem-solution + impulse angle"
 
-def generate_hooks(name):
-    return [
-        f"Stop wasting money on bad {name} solutions 😳",
-        f"This {name} changed everything in 7 days 🔥",
-        f"Why is nobody talking about this {name}?",
-        f"The easiest way to improve your life with {name}",
-        f"POV: you finally found the perfect {name}"
-    ]
+
+def generate_hooks(name, persona):
+    persona_hooks = {
+        "Moms": [
+            f"Moms are obsessed with this {name} 😍",
+            f"The easiest parenting hack using {name}",
+            f"Every mom needs this {name} at home"
+        ],
+        "Gym Audience": [
+            f"This {name} is changing gym routines 💪",
+            f"Gym people can’t stop buying this {name}",
+            f"Use this {name} before your next workout"
+        ],
+        "Beauty Buyers": [
+            f"This {name} gives salon-level results ✨",
+            f"Beauty lovers are buying this {name} fast",
+            f"Glow-up secret: this {name}"
+        ],
+        "Pet Owners": [
+            f"Pet owners swear by this {name} 🐶",
+            f"The easiest pet cleanup hack with {name}",
+            f"No more pet mess thanks to this {name}"
+        ],
+        "Car Lovers": [
+            f"Car lovers are obsessed with this {name} 🚗",
+            f"The easiest car upgrade with {name}",
+            f"Your car needs this {name}"
+        ]
+    }
+
+    return persona_hooks.get(persona, [f"Best hook for {name}"])
 
 
 def generate_ugc_script(name):
@@ -114,7 +136,8 @@ def generate_ugc_script(name):
 4. Result → reveal transformation
 5. CTA → “Get yours before it sells out”
 """
-    
+
+
 # ---------------- MAIN ----------------
 if product_name:
     wow, problem, impulse, hook, scale_score = generate_marketing_scores(product_name)
@@ -182,18 +205,30 @@ if product_name:
             "or generate strong CTR."
         )
 
-   # ---------------- AD CREATIVE ENGINE ----------------
-   st.subheader("🎬 Ad Hook & UGC Script Generator")
+    # ---------------- PERSONA SELECTOR ----------------
+    persona = st.selectbox(
+        "🎯 Select Target Persona",
+        [
+            "Moms",
+            "Gym Audience",
+            "Beauty Buyers",
+            "Pet Owners",
+            "Car Lovers"
+        ]
+    )
 
-   hooks = generate_hooks(product_name)
-   ugc_script = generate_ugc_script(product_name)
+    # ---------------- AD CREATIVE ENGINE ----------------
+    st.subheader("🎬 Ad Hook & UGC Script Generator")
 
-   st.markdown("### 🎯 5 High CTR Hooks")
-   for hook in hooks:
-      st.write(f"- {hook}")
+    hooks = generate_hooks(product_name, persona)
+    ugc_script = generate_ugc_script(product_name)
 
-   st.markdown("### 🎥 UGC Creative Script")
-   st.code(ugc_script)
+    st.markdown("### 🎯 Persona-Based Hooks")
+    for hook_text in hooks:
+        st.write(f"- {hook_text}")
 
-   else:
-       st.info("👆 Type a product idea above to validate its ad potential.")
+    st.markdown("### 🎥 UGC Creative Script")
+    st.code(ugc_script)
+
+else:
+    st.info("👆 Type a product idea above to validate its ad potential.")
