@@ -256,6 +256,7 @@ if niche:
             df,
             column_config={
                 "Product Link": st.column_config.LinkColumn("🔗 product Link")
+            },
             use_container_width=True)
 
         # ---------------- SELECT PRODUCT ----------------
