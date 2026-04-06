@@ -257,7 +257,8 @@ if niche:
             column_config={
                 "Product Link": st.column_config.LinkColumn("🔗 product Link")
             },
-            use_container_width=True)
+            use_container_width=True
+        )
 
         # ---------------- SELECT PRODUCT ----------------
         selected_product = st.selectbox(
