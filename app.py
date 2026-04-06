@@ -220,6 +220,9 @@ if niche:
     raw_products = fetch_related_products(niche)
     products = filter_product_keywords(raw_products)
 
+    if not products:
+        products = niche_fallback_products(niche)
+
     if products:
         discovery_rows = []
 
