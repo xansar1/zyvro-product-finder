@@ -1,130 +1,39 @@
-# 🔥 ZYVRO AI - Amazon Winning Product Finder
+# ZYVRO AI — Product Research Studio V2
 
-AI-powered Amazon product research system that helps sellers discover **high-potential winning products** using **competition analysis, profit estimation, and intelligent scoring**.
+A **transparent** product discovery / unit economics **research demo**, made with Streamlit, Python, and Pandas.
 
-This tool is built for **Amazon FBA sellers, dropshippers, product researchers, and eCommerce agencies** to quickly identify profitable opportunities using live marketplace intelligence.
+**Public demo mode:** 70 deterministically generated **fictional** items. No real Amazon prices, rankings, reviews, demand, availability, or links are implied. These are placeholders for user interface testing.
 
----
+**Optional provider mode:** server-side Rainforest API key can fetch actual Amazon *search-result records at request time*. Returned product metadata is not verified inventory, sales or future demand, and may be incomplete or sponsored.
 
-## 🚀 Live Demo
-👉 Add your Streamlit deployed app link here
+The **Opportunity score (0–100) is a handcrafted heuristic, NOT trained AI, forecast, guaranteed profit or an Amazon sales prediction**. Details and weights are shown in the dashboard. Review-count density is only a proxy for listing evidence, not a measure of actual competition. All unit economics use user-entered hypothetical assumptions and ignore taxes and uncertain returns unless included by the user.
 
-Example:
-```text
-https://zyvro-product-finder.streamlit.app
-```
+## Features
+- Four working sections: Discovery, Compare, Unit Economics, Methodology.
+- Candidate search, filter, sort, evidence disclosure, reusable real-data adapter and defensively parsed provider URLs.
+- Interactive tables and charts, simple breakdown of every ranking component.
+- Scenario-based gross/unit margin calculations (NOT predicted sales).
+- CSV export with source label.
+- Completely offline-capable fictional demo mode.
 
----
+## Run locally
 
-## ✨ Features
-- 🔍 Search any Amazon keyword
-- 🌍 Multi-marketplace support
-- 📈 AI Winning Score
-- ⚔️ Competition level detection
-- 💵 Estimated profit margin
-- 🏭 Suggested sourcing cost
-- 🏆 Best opportunity recommendation
-- 📊 Product intelligence table
-- 📥 CSV export
-- 🖼 Product images + links
-- ☁️ Easy Streamlit deployment
-
----
-
-## 💼 Business Use Cases
-- Amazon FBA product research
-- Dropshipping product validation
-- eCommerce market intelligence
-- Product hunting agencies
-- Amazon seller dashboard tools
-- Shopify store trend research
-- Wholesale sourcing decision systems
-
----
-
-## 🛠 Tech Stack
-- Python
-- Streamlit
-- Pandas
-- Matplotlib
-- Requests
-- Rainforest API
-- Python-dotenv
-
----
-
-## ⚡ Installation
 ```bash
-git clone https://github.com/xansar1/zyvro-product-finder.git
-cd zyvro-product-finder
-pip install -r requirements.txt
-streamlit run app.py
+bash scripts/start_mac.sh
 ```
 
----
+Or install `requirements.txt` then run `streamlit run app.py`. Tests: `pip install -r requirements-dev.txt && pytest -q`.
 
-## 🔑 API Setup
-Create a `.env` file in the project root and add:
+## Optional live provider mode
 
-```env
-RAINFOREST_API_KEY=your_api_key_here
-```
+1. Get a Rainforest API account and **new key**. If your earlier key was committed to public GitHub, **revoke/rotate it** at the provider before reusing the integration. Removing `.env` from a branch does NOT erase it from Git history.
+2. Set `RAINFOREST_API_KEY` in Streamlit Community Cloud → App settings → Secrets (never in code, logs, `.env` tracked files, or URL). For local use `export RAINFOREST_API_KEY='...'` in the shell or create local `.streamlit/secrets.toml` from the example (ignored in Git).
+3. In sidebar choose *Rainforest API results*. API calls may use your paid quota. Provider credentials are never sent to the browser directly.
 
-Get your API key from Rainforest API dashboard.
+## Streamlit Community Cloud
 
----
+Deploy the `main` or `zyvro-v2-safe-demo` branch using `app.py` as the main file. The public demo works **without keys**. When the branch is reviewed and merged, the live app may redeploy automatically if connected to the same repository/branch.
 
-## 📂 Project Structure
-```bash
-ZYVRO-Product-Finder/
-│── app.py
-│── amazon_winning_products.py
-│── requirements.txt
-│── README.md
-│── .env
-│── winning_products.csv
-```
+## Security
 
----
-
-## 📸 Sample Output
-Recommended screenshots to add:
-- search keyword result page
-- top winning products graph
-- opportunity score table
-- product details cards
-- CSV export preview
-
----
-
-## 📈 How Winning Score Works
-Winning score is calculated using:
-
-- ⭐ product rating
-- 💬 total reviews
-- 💰 price potential
-- ⚔️ competition density
-- 📦 estimated margin
-- 🏭 sourcing cost feasibility
-
-This helps sellers quickly identify products with **high demand + manageable competition + healthy profit potential**.
-
----
-
-## 🎯 Who Will Buy This
-This project can be sold to:
-
-- Amazon FBA beginners
-- experienced product hunters
-- eCommerce agencies
-- dropshipping mentors
-- seller coaching institutes
-- Shopify growth consultants
-- Amazon virtual assistants
-- product research freelancers
-
----
-
-## 👨‍💻 Developer
-Built by **Ansar**  
-AI + Data Science + SaaS Product Builder 🚀
+**Legacy source warning**: the old repository exposed `.env` and used fabricated listing metrics and fake CTR/ROAS estimates. This V2 has no embedded key and no fabricated live claims. Make sure to remove all real credentials and revoke old keys before publishing. A separate Git history rewrite is required if you want the historical secret removed from the original repository's commit history.

@@ -1,0 +1,1 @@
+"""ZYVRO AI — honest research prototype (synthetic demo + optional live provider)."""
